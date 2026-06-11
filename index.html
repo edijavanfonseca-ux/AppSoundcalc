@@ -1,8 +1,6 @@
-from pathlib import Path
 
-base = Path("/mnt/data")
 
-index_html = r"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -17,13 +15,17 @@ index_html = r"""<!DOCTYPE html>
     box-sizing: border-box;
 }
 
+html, body {
+    width: 100%;
+    overflow-x: hidden; /* Corrige qualquer rolagem lateral indesejada */
+}
+
 body {
     font-family: 'Inter', Arial, sans-serif;
     background: linear-gradient(135deg, #111827 0%, #311042 100%);
     color: #fff;
     min-height: 100vh;
     position: relative;
-    overflow-x: hidden;
 }
 
 body::before {
@@ -126,6 +128,10 @@ input:focus, select:focus {
     outline: none;
     border-color: #90caf9;
     box-shadow: 0 0 10px rgba(144,202,249,0.2);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
 }
 
 button {
@@ -291,14 +297,26 @@ function mostrarToast() {
 function salvar(){
     let marca = document.getElementById('marca').value || 'Genérico';
     let modelo = document.getElementById('modelo').value || 'Padrão';
-    let rmsInformado = Number(document.getElementById('rms').value || 0);
-    let ohmsNominal = Number(document.getElementById('ohms').value || 0);
-    let qtd = Number(document.getElementById('qtd').value || 1);
+    
+    // Se o usuário deixar vazio ou digitar inválido, assume os valores padrão sugeridos nos placeholders
+    let rmsRaw = document.getElementById('rms').value;
+    let ohmsRaw = document.getElementById('ohms').value;
+    let qtdRaw = document.getElementById('qtd').value;
+
+    let rmsInformado = rmsRaw !== "" ? Number(rmsRaw) : 300;
+    let ohmsNominal = ohmsRaw !== "" ? Number(ohmsRaw) : 8;
+    let qtd = qtdRaw !== "" ? Number(qtdRaw) : 1;
+    
+    // Força preenchimento visual dos campos para o usuário ver os valores usados no cálculo padrão
+    if(rmsRaw === "") document.getElementById('rms').value = rmsInformado;
+    if(ohmsRaw === "") document.getElementById('ohms').value = ohmsNominal;
+    if(qtdRaw === "") document.getElementById('qtd').value = qtd;
+
     let tipoLigacao = document.getElementById('associacao').value;
     let tipo = document.getElementById('tipo').value;
     
     if(rmsInformado <= 0 || ohmsNominal <= 0 || qtd <= 0) {
-        document.getElementById('resultado').innerHTML = '<div class="alerta-box">⚠️ Por favor, informe valores maiores que zero para Potência, Impedância e Quantidade.</div>';
+        document.getElementById('resultado').innerHTML = '<div class="alerta-box">⚠️ Por favor, informe valores maiores que zero para realizar o cálculo.</div>';
         return;
     }
     
@@ -327,12 +345,11 @@ function salvar(){
     let corrente = (vrms / ohmsFinal).toFixed(2);
     
     let corte = '';
-    let frequencias = '';
-    if(tipo === 'Subwoofer') { corte = 'HPF 20Hz / LPF 80Hz'; frequencias = '20 - 80 Hz'; }
-    if(tipo === 'Woofer') { corte = 'HPF 50Hz / LPF 250Hz'; frequencias = '50 - 250 Hz'; }
-    if(tipo === 'Médio') { corte = 'HPF 250Hz / LPF 1500Hz'; frequencias = '250 - 1500 Hz'; }
-    if(tipo === 'Driver') { corte = 'HPF 1500Hz / LPF 7000Hz'; frequencias = '1.5k - 7 kHz'; }
-    if(tipo === 'Super Tweeter') { corte = 'HPF 8000Hz ativo ou Capacitor 4.7uF'; frequencias = '8k - 20 kHz'; }
+    if(tipo === 'Subwoofer') { corte = 'HPF 20Hz / LPF 80Hz'; }
+    if(tipo === 'Woofer') { corte = 'HPF 50Hz / LPF 250Hz'; }
+    if(tipo === 'Médio') { corte = 'HPF 250Hz / LPF 1500Hz'; }
+    if(tipo === 'Driver') { corte = 'HPF 1500Hz / LPF 7000Hz'; }
+    if(tipo === 'Super Tweeter') { corte = 'HPF 8000Hz ativo ou Capacitor 4.7uF'; }
     
     let resultadoHTML = `
         ${notaObservacao}
@@ -382,31 +399,14 @@ function salvar(){
 }
 
 window.onload = () => {
-    checarTipo(); // Garante o estado inicial correto ao carregar
+    checarTipo();
     let d = localStorage.getItem('ultimoProjeto');
     if(d) document.getElementById('resultado').innerHTML = d;
 }
 </script>
 </body>
-</html>"""
+</html>
 
-manifest = """{
-    "name": "SoundCalc Pro",
-    "short_name": "SoundCalc",
-    "description": "Calculadora profissional para sistemas de som",
-    "start_url": "index.html",
-    "display": "standalone",
-    "background_color": "#111827",
-    "theme_color": "#7e57c2",
-    "icons": []
-}"""
 
-sw = """self.addEventListener('install', event => { self.skipWaiting(); });
-self.addEventListener('fetch', event => { event.respondWith(fetch(event.request).catch(() => new Response('Offline'))); });"""
 
-# Atualizar arquivos no diretório de destino
-(base/"index.html").write_text(index_html, encoding="utf-8")
-(base/"manifest.json").write_text(manifest, encoding="utf-8")
-(base/"service-worker.js").write_text(sw, encoding="utf-8")
 
-print({"status": "✅ Corrigido com sucesso! Reinicie o preview do app."})
